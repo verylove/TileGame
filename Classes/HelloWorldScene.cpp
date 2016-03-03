@@ -1,6 +1,7 @@
 #include "HelloWorldScene.h"
 #include "cocostudio/CocoStudio.h"
 #include "ui/CocosGUI.h"
+#include "GameOverScene.h"
 
 using namespace ui;
 
@@ -279,7 +280,9 @@ void HelloWorld::setPlayerPosition(Point position)
                 // Add inside setPlayerPosition, in the case where a tile is collectable
                 this->_numCollected++;
                 this->_hud->numCollectedChanged(_numCollected);
-                
+                if (_numCollected == 20) {
+                    this->win();
+                }
                 // In case of collectable tile
                 SimpleAudioEngine::getInstance()->playEffect("pickup.mp3");
             }
@@ -520,4 +523,32 @@ void HelloWorld::testCollisions(float dt)
         this->removeChild(projectile);
     }
     projectilesToDelete.clear();
+    
+    
+    //检测只要有一个敌人碰到英雄救挂了
+    for (Sprite *target : _enemies) {
+        auto targetRect = Rect(
+                               target->getPosition().x - (target->getContentSize().width / 2),
+                               target->getPosition().y - (target->getContentSize().height / 2),
+                               target->getContentSize().width,
+                               target->getContentSize().height);
+        if (targetRect.containsPoint(_player->getPosition())) {
+            this->lose();
+        }
+    }
+}
+
+
+void HelloWorld::win()
+{
+    GameOverScene *gameOverScene = GameOverScene::create();
+    gameOverScene->getLayer()->getLabel()->setString("You Win!");
+    Director::getInstance()->replaceScene(gameOverScene);
+}
+
+void HelloWorld::lose()
+{
+    GameOverScene *gameOverScene = GameOverScene::create();
+    gameOverScene->getLayer()->getLabel()->setString("You Lose!");
+    Director::getInstance()->replaceScene(gameOverScene);
 }

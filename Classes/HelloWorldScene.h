@@ -49,6 +49,9 @@ public:
     void enemyMoveFinished(Object *pSender);
     void projectileMoveFinished(Object *pSender);
     
+    void win();
+    void lose();
+    
     void testCollisions(float dt);
     // Inside HelloWorld class declaration
     int _numCollected;
