@@ -47,7 +47,9 @@ public:
     void addEnemyAtPos(Point pos);
     void animateEnemy(Sprite *enemy);
     void enemyMoveFinished(Object *pSender);
+    void projectileMoveFinished(Object *pSender);
     
+    void testCollisions(float dt);
     // Inside HelloWorld class declaration
     int _numCollected;
     static HelloWorldHud *_hud;
@@ -61,7 +63,9 @@ private:
     cocos2d::Sprite *_player;//玩家
     cocos2d::TMXLayer *_meta;//不可过
     cocos2d::TMXLayer *_foreground;//可以拾取
-
+    
+    cocos2d::Vector<cocos2d::Sprite *> _enemies;
+    cocos2d::Vector<cocos2d::Sprite *> _projectiles;
     
 };
 

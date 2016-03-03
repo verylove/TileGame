@@ -110,6 +110,7 @@ bool HelloWorld::init()
     //SimpleAudioEngine::getInstance()->playBackgroundMusic("TileMap.mp3", true);
     
     _mode =0;
+    this->schedule(schedule_selector(HelloWorld::testCollisions));
     
     /**  you can create scene with following comment code instead of using csb file.
     // 1. super init first
@@ -347,7 +348,54 @@ void HelloWorld::movePos(float dt)
 //移动触屏
 void HelloWorld::onTouchEnded(Touch *touch, Event *unused_event)
 {
-    this->movePos(100.0f);
+    
+    if (_mode == 0) {
+        // old contents of onTouchEnded
+        this->movePos(100.0f);
+    } else {
+        // code to throw ninja stars will go here
+        //发射子弹
+        // Find where the touch is
+        auto touchLocation = touch->getLocation();
+        touchLocation = this->convertToNodeSpace(touchLocation);
+        
+        // Create a projectile and put it at the player's location
+        auto projectile = Sprite::create("Projectile.png");
+        projectile->setPosition(_player->getPosition());
+        this->addChild(projectile);
+        
+        // Determine where we wish to shoot the projectile to
+        int realX;
+        
+        // Are we shooting to the left or right?
+        auto diff = touchLocation - _player->getPosition();
+        if (diff.x > 0)
+        {
+            realX = (_tileMap->getMapSize().width * _tileMap->getTileSize().width) +
+            (projectile->getContentSize().width / 2);
+        }
+        else {
+            realX = -(_tileMap->getMapSize().width * _tileMap->getTileSize().width) -
+            (projectile->getContentSize().width / 2);
+        }
+        float ratio = (float)diff.y / (float)diff.x;
+        int realY = ((realX - projectile->getPosition().x) * ratio) + projectile->getPosition().y;
+        auto realDest = Point(realX, realY);
+        
+        // Determine the length of how far we're shooting
+        int offRealX = realX - projectile->getPosition().x;
+        int offRealY = realY - projectile->getPosition().y;
+        float length = sqrtf((offRealX*offRealX) + (offRealY*offRealY));
+        float velocity = 480 / 1; // 480pixels/1sec
+        float realMoveDuration = length / velocity;
+        
+        // Move projectile to actual endpoint
+        auto actionMoveDone = CallFuncN::create(CC_CALLBACK_1(HelloWorld::projectileMoveFinished, this));
+        projectile->runAction(Sequence::create(MoveTo::create(realMoveDuration, realDest), actionMoveDone, NULL));
+        
+        _projectiles.pushBack(projectile);
+    }
+    
     //长按结束，停止
     unschedule(CC_SCHEDULE_SELECTOR(HelloWorld::movePos));
     CCLOG("unschedule");
@@ -372,6 +420,7 @@ void HelloWorld::addEnemyAtPos(Point pos)
     this->addChild(enemy);
     
     this->animateEnemy(enemy);
+    _enemies.pushBack(enemy);
 }
 
 //starts another iteration of enemy movement.
@@ -416,3 +465,59 @@ void HelloWorld::animateEnemy(Sprite *enemy)
     enemy->setRotation(cocosAngle);
 }
 
+//清理
+void HelloWorld::projectileMoveFinished(Object *pSender)
+{
+    Sprite *sprite = (Sprite *)pSender;
+    _projectiles.eraseObject(sprite);
+    this->removeChild(sprite);
+}
+
+//检测碰撞，飞镖和敌人
+void HelloWorld::testCollisions(float dt)
+{
+    Vector<Sprite*> projectilesToDelete;
+    
+    // iterate through projectiles
+    for (Sprite *projectile : _projectiles) {
+        auto projectileRect = Rect(
+                                   projectile->getPositionX() - projectile->getContentSize().width / 2,
+                                   projectile->getPositionY() - projectile->getContentSize().height / 2,
+                                   projectile->getContentSize().width,
+                                   projectile->getContentSize().height);
+        
+        Vector<Sprite*> targetsToDelete;
+        
+        // iterate through enemies, see if any intersect with current projectile
+        for (Sprite *target : _enemies) {
+            auto targetRect = Rect(
+                                   target->getPositionX() - target->getContentSize().width / 2,
+                                   target->getPositionY() - target->getContentSize().height / 2,
+                                   target->getContentSize().width,
+                                   target->getContentSize().height);
+            
+            if (projectileRect.intersectsRect(targetRect)) {
+                targetsToDelete.pushBack(target);
+            }
+        }
+        
+        // delete all hit enemies
+        for (Sprite *target : targetsToDelete) {
+            _enemies.eraseObject(target);
+            this->removeChild(target);
+        }
+        
+        if (targetsToDelete.size() > 0) {
+            // add the projectile to the list of ones to remove
+            projectilesToDelete.pushBack(projectile);
+        }
+        targetsToDelete.clear();
+    }
+    
+    // remove all the projectiles that hit.
+    for (Sprite *projectile : projectilesToDelete) {
+        _projectiles.eraseObject(projectile);
+        this->removeChild(projectile);
+    }
+    projectilesToDelete.clear();
+}
